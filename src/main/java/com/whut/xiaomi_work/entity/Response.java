@@ -13,11 +13,11 @@ public class Response {
     private Object data;
 
     public static Response success(){
-        return new Response(200,"操作成功",null);
+        return new Response(200,"ok",null);
     }
 
     public static Response success(Object object){
-        return new Response(200,"操作成功",object);
+        return new Response(200,"ok",object);
     }
 
     public static Response error(String message){
