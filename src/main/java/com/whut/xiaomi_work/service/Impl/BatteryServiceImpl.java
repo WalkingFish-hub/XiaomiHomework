@@ -122,6 +122,7 @@ public class BatteryServiceImpl implements BatteryService {
             Long batteryId = carMapper.selectBatteryById(info.getCarId());
             if(batteryId == null){
                 map.put("信息",info.getCarId()+"号车不存在");
+                alertMessages.add(map);
                 continue;
             }
             Battery battery = batteryMapper.selectById(batteryId);
