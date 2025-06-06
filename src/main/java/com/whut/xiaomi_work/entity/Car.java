@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class Car {
     private String vid;
-    private Long cid;
+    private Long id;
     private Long batteryId;
     private Long totalMileage;
 }

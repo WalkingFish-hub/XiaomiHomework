@@ -2,6 +2,7 @@ package com.whut.xiaomi_work.service.Impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.whut.xiaomi_work.entity.AlertInfo;
 import com.whut.xiaomi_work.entity.Battery;
 import com.whut.xiaomi_work.entity.Car;
@@ -12,6 +13,7 @@ import com.whut.xiaomi_work.mapper.RuleMapper;
 import com.whut.xiaomi_work.service.BatteryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,14 +49,14 @@ public class BatteryServiceImpl implements BatteryService {
     @Transactional
     public boolean insertBattery(Car car, Battery battery) {
         // 1. 先写数据库
-        int insertCar = carMapper.insertCar(car.getVid(), car.getCid(), car.getBatteryId(), car.getTotalMileage());
+        int insertCar = carMapper.insertCar(car.getVid(), car.getId(), car.getBatteryId(), car.getTotalMileage());
         int insertBattery = batteryMapper.insertBattery(battery.getId(), battery.getHealth(),
                 battery.getType(), battery.getMx(), battery.getMi(), battery.getIx(), battery.getIi());
 
         if (insertCar == 1 && insertBattery == 1) {
             // 2. 成功后写缓存
             redisTemplate.opsForValue().set(BATTERY_KEY_PREFIX + battery.getId(), battery, 1, TimeUnit.HOURS);
-            redisTemplate.opsForValue().set(CAR_KEY_PREFIX + car.getCid(), car, 1, TimeUnit.HOURS);
+            redisTemplate.opsForValue().set(CAR_KEY_PREFIX + car.getId(), car, 1, TimeUnit.HOURS);
             return true;
         }
         return false;
@@ -185,5 +187,22 @@ public class BatteryServiceImpl implements BatteryService {
         }
     }
 
+    @Scheduled(fixedDelay = 60*1000)
+    public void scanBattery(){
+        List<Car> cars = carMapper.selectCars();
+        for(Car car : cars){
+            Long batteryId = carMapper.selectBatteryById(car.getId());
+            Battery battery = batteryMapper.selectById(batteryId);
+            ObjectMapper mapper = new ObjectMapper();
+            ObjectNode signalNode = mapper.createObjectNode();
+            signalNode.put("Mx", battery.getMx());
+            signalNode.put("Mi", battery.getMi());
+            signalNode.put("Ix", battery.getIx());
+            signalNode.put("Ii", battery.getIi());
+            AlertInfo alertInfo =new AlertInfo(car.getId(), null, signalNode.toString());
+            System.out.println(getRules(ELECTRIC_CURRENT_ID, alertInfo, battery.getType()));
+            System.out.println(getRules(VOLTAGE_ID,alertInfo, battery.getType()));
+        }
 
+    }
 }
